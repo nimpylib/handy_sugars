@@ -1,5 +1,6 @@
 
 import std/macros
+import ./private/mark_common
 
 type
   CompileBackend*{.pure.} = enum
@@ -29,7 +30,6 @@ func inBackend(backends: openArray[CompileBackend]): bool =
 const NotSupportMsgTempl = "The symbol is not supported in the backend: "
 template notSupportMsgNode(s): NimNode = newLit(NotSupportMsgTempl & s)
 const
-  DocSep = "\n\n"
   NotSupportDocTempl = ".. hint:: not available in "
 template notSupportDoc(s): untyped = NotSupportDocTempl & s & " backend"
 
@@ -38,26 +38,14 @@ func wrap1Impl(back: NimNode): NimNode =
 
 macro wrap1(back): CompileBackend = wrap1Impl back
 
-func insertNotSuppPragma(res: NimNode, backendName: string) =
-  res.addPragma nnkExprColonExpr.newTree(
-    ident"error",
-    notSupportMsgNode(backendName)
-  )
-
-func refineDoc(res: NimNode, backendName: string) =
-  let n = notSupportDoc backendName
-  var body = res.body
-  if body[0].kind != nnkCommentStmt:
-    body.insert(0, newCommentStmtNode n)
-  else: body[0].strVal = body[0].strVal & DocSep & n
-
 template noBackendImplBody(def, backend) =
   result = def
   let backendName = $backend
-  result.refineDoc backendName
+  let n = notSupportDoc backendName
+  result.prependDocAndClearOther n
   if not inBackend backend:
     return
-  result.insertNotSuppPragma backendName
+  result.addErrorPragma notSupportMsgNode backendName
 func noBackendImpl(def: NimNode, backend: CompileBackend): NimNode =
   noBackendImplBody def, backend
 
