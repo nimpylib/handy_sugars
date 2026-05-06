@@ -38,11 +38,13 @@ func wrap1Impl(back: NimNode): NimNode =
 
 macro wrap1(back): CompileBackend = wrap1Impl back
 
+const nimDoc = defined(nimdoc)
 template noBackendImplBody(def, backend) =
   result = def
   let backendName = $backend
-  let n = notSupportDoc backendName
-  result.prependDocAndClearOther n
+  when nimDoc:
+    let n = notSupportDoc backendName
+    result.prependDocAndClearOther n
   if not inBackend backend:
     return
   result.addErrorPragma notSupportMsgNode backendName
